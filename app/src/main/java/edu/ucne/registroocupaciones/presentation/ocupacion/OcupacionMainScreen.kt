@@ -36,12 +36,11 @@ fun OcupacionMainScreen(
 
     LaunchedEffect(editState.saved) {
         if (editState.saved) {
+            showForm = false
             snackbarHostState.showSnackbar(" Ocupación guardada exitosamente")
             editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-            showForm = false
         }
     }
-
     LaunchedEffect(editState.deleted) {
         if (editState.deleted) {
             snackbarHostState.showSnackbar(" Ocupación eliminada")

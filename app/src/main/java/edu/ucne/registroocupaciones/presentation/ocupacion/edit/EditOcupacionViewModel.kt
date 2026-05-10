@@ -58,7 +58,7 @@ class EditOcupacionViewModel @Inject constructor(
 
     private fun load(id: Int?) {
         if (id == null || id == 0) {
-            _state.update { it.copy(isNew = true, ocupacionId = null) }
+            _state.value = EditOcupacionUiState(isNew = true, saved = false)
             return
         }
         viewModelScope.launch {
@@ -68,7 +68,8 @@ class EditOcupacionViewModel @Inject constructor(
                         isNew = false,
                         ocupacionId = o.ocupacionId,
                         descripcion = o.descripcion,
-                        sueldo = o.sueldo
+                        sueldo = o.sueldo,
+                        saved = false
                     )
                 }
             }
@@ -100,7 +101,6 @@ class EditOcupacionViewModel @Inject constructor(
                         sueldo = _state.value.sueldo ?: 0.0
                     )
                 )
-                // Resetea el formulario completamente después de guardar
                 _state.update {
                     EditOcupacionUiState(
                         isNew = true,
