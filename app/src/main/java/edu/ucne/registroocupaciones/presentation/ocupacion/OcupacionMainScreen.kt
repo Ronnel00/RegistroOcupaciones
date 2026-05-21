@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import edu.ucne.registroocupaciones.presentation.ocupacion.list.ListOcupacionVie
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OcupacionMainScreen(
+    onDrawer: () -> Unit = {},
     editViewModel: EditOcupacionViewModel = hiltViewModel(),
     listViewModel: ListOcupacionViewModel = hiltViewModel()
 ) {
@@ -53,7 +55,12 @@ fun OcupacionMainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Registro de Ocupaciones") }
+                title = { Text("Registro de Ocupaciones") },
+                navigationIcon = {
+                    IconButton(onClick = onDrawer) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    }
+                }
             )
         },
         floatingActionButton = {
