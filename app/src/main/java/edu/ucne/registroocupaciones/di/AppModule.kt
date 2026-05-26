@@ -9,10 +9,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import edu.ucne.registroocupaciones.data.database.OcupacionDB
 import edu.ucne.registroocupaciones.data.local.dao.EmpleadoDao
+import edu.ucne.registroocupaciones.data.local.dao.HoraExtraDao
 import edu.ucne.registroocupaciones.data.local.dao.OcupacionDao
 import edu.ucne.registroocupaciones.data.repository.EmpleadoRepositoryImpl
+import edu.ucne.registroocupaciones.data.repository.HoraExtraRepositoryImpl
 import edu.ucne.registroocupaciones.data.repository.OcupacionRepositoryImpl
 import edu.ucne.registroocupaciones.domain.empleados.repository.EmpleadoRepository
+import edu.ucne.registroocupaciones.domain.horasextras.repository.HoraExtraRepository
 import edu.ucne.registroocupaciones.domain.ocupaciones.repository.OcupacionRepository
 import javax.inject.Singleton
 
@@ -55,4 +58,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideEmpleadoRepository(impl: EmpleadoRepositoryImpl): EmpleadoRepository = impl
+
+    @Provides
+    @Singleton
+    fun provideHoraExtraDao(db: OcupacionDB): HoraExtraDao =
+        db.horaExtraDao()
+
+    @Provides
+    @Singleton
+    fun provideHoraExtraRepositoryImpl(dao: HoraExtraDao): HoraExtraRepositoryImpl =
+        HoraExtraRepositoryImpl(dao)
+
+    @Provides
+    @Singleton
+    fun provideHoraExtraRepository(impl: HoraExtraRepositoryImpl): HoraExtraRepository =
+        impl
 }
