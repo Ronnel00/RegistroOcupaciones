@@ -3,6 +3,7 @@ package edu.ucne.registroocupaciones.presentation.navigation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.*
@@ -29,7 +30,7 @@ fun DrawerMenu(
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Registro",
+                    text = "Registro Académico",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,
@@ -61,6 +62,19 @@ fun DrawerMenu(
                                 launchSingleTop = true
                             }
                             selectedItem.value = "Empleados"
+                            scope.launch { drawerState.close() }
+                        }
+                    }
+                    item {
+                        DrawerItem(
+                            title = "Horas Extras",
+                            icon = Icons.Filled.AccessTime,
+                            isSelected = selectedItem.value == "Horas Extras"
+                        ) {
+                            navHostController.navigate(Screen.HoraExtraList) {
+                                launchSingleTop = true
+                            }
+                            selectedItem.value = "Horas Extras"
                             scope.launch { drawerState.close() }
                         }
                     }
