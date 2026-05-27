@@ -7,6 +7,8 @@ import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import edu.ucne.registroocupaciones.presentation.empleado.edit.EditEmpleadoScreen
 import edu.ucne.registroocupaciones.presentation.empleado.list.EmpleadoListScreen
+import edu.ucne.registroocupaciones.presentation.horaextra.edit.EditHoraExtraScreen
+import edu.ucne.registroocupaciones.presentation.horaextra.list.HoraExtraListScreen
 import edu.ucne.registroocupaciones.presentation.ocupacion.OcupacionMainScreen
 import kotlinx.coroutines.launch
 
@@ -15,10 +17,7 @@ fun RegistroNavHost(navHostController: NavHostController) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
-    DrawerMenu(
-        drawerState = drawerState,
-        navHostController = navHostController
-    ) {
+    DrawerMenu(drawerState = drawerState, navHostController = navHostController) {
         NavHost(
             navController = navHostController,
             startDestination = Screen.OcupacionList
@@ -41,6 +40,23 @@ fun RegistroNavHost(navHostController: NavHostController) {
                 val args = it.toRoute<Screen.Empleado>()
                 EditEmpleadoScreen(
                     empleadoId = args.empleadoId,
+                    onNavigateBack = { navHostController.navigateUp() },
+                    onDrawer = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable<Screen.HoraExtraList> {
+                HoraExtraListScreen(
+                    onDrawer = { scope.launch { drawerState.open() } },
+                    goToHoraExtra = { id -> navHostController.navigate(Screen.HoraExtra(id)) },
+                    createHoraExtra = { navHostController.navigate(Screen.HoraExtra(0)) }
+                )
+            }
+
+            composable<Screen.HoraExtra> {
+                val args = it.toRoute<Screen.HoraExtra>()
+                EditHoraExtraScreen(
+                    horaExtraId = args.horaExtraId,
                     onNavigateBack = { navHostController.navigateUp() },
                     onDrawer = { scope.launch { drawerState.open() } }
                 )
