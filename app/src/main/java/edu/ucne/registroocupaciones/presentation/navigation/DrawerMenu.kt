@@ -1,19 +1,22 @@
 package edu.ucne.registroocupaciones.presentation.navigation
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Work
-import androidx.compose.material3.*
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavHostController
-import kotlinx.coroutines.launch
+
+data class NavigationItem(
+    val title: String,
+    val icon: ImageVector,
+    val screen: Screen
+)
 
 @Composable
 fun DrawerMenu(
@@ -21,64 +24,33 @@ fun DrawerMenu(
     navHostController: NavHostController,
     content: @Composable () -> Unit
 ) {
-    val selectedItem = remember { mutableStateOf("Ocupaciones") }
-    val scope = rememberCoroutineScope()
+    val items = listOf(
+        NavigationItem("Ocupaciones", Icons.Filled.Work, Screen.OcupacionList),
+        NavigationItem("Empleados", Icons.Filled.People, Screen.EmpleadoList),
+        NavigationItem("Horas Extras", Icons.Filled.AccessTime, Screen.HoraExtraList)
+    )
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Registro Académico",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.padding(16.dp)
+    var selectedItem by remember { mutableStateOf(0) }
+
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            items.forEachIndexed { index, item ->
+                item(
+                    icon = {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title
+                        )
+                    },
+                    label = { Text(item.title) },
+                    selected = selectedItem == index,
+                    onClick = {
+                        selectedItem = index
+                        navHostController.navigate(item.screen) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn {
-                    item {
-                        DrawerItem(
-                            title = "Ocupaciones",
-                            icon = Icons.Filled.Work,
-                            isSelected = selectedItem.value == "Ocupaciones"
-                        ) {
-                            navHostController.navigate(Screen.OcupacionList) {
-                                launchSingleTop = true
-                            }
-                            selectedItem.value = "Ocupaciones"
-                            scope.launch { drawerState.close() }
-                        }
-                    }
-                    item {
-                        DrawerItem(
-                            title = "Empleados",
-                            icon = Icons.Filled.People,
-                            isSelected = selectedItem.value == "Empleados"
-                        ) {
-                            navHostController.navigate(Screen.EmpleadoList) {
-                                launchSingleTop = true
-                            }
-                            selectedItem.value = "Empleados"
-                            scope.launch { drawerState.close() }
-                        }
-                    }
-                    item {
-                        DrawerItem(
-                            title = "Horas Extras",
-                            icon = Icons.Filled.AccessTime,
-                            isSelected = selectedItem.value == "Horas Extras"
-                        ) {
-                            navHostController.navigate(Screen.HoraExtraList) {
-                                launchSingleTop = true
-                            }
-                            selectedItem.value = "Horas Extras"
-                            scope.launch { drawerState.close() }
-                        }
-                    }
-                }
             }
         }
     ) {
