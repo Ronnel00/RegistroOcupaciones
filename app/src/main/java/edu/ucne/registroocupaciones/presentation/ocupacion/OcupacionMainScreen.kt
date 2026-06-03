@@ -8,8 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,31 +27,34 @@ import edu.ucne.registroocupaciones.presentation.ocupacion.edit.EditOcupacionUiE
 import edu.ucne.registroocupaciones.presentation.ocupacion.edit.EditOcupacionViewModel
 import edu.ucne.registroocupaciones.presentation.ocupacion.list.ListOcupacionUiEvent
 import edu.ucne.registroocupaciones.presentation.ocupacion.list.ListOcupacionViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OcupacionMainScreen(
-    onDrawer: () -> Unit = {},
     editViewModel: EditOcupacionViewModel = hiltViewModel(),
     listViewModel: ListOcupacionViewModel = hiltViewModel()
 ) {
     val editState by editViewModel.state.collectAsStateWithLifecycle()
     val listState by listViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showForm by remember { mutableStateOf(false) }
+    val navigator = rememberListDetailPaneScaffoldNavigator<Int>()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(editState.saved) {
         if (editState.saved) {
-            showForm = false
-            snackbarHostState.showSnackbar(" Ocupación guardada exitosamente")
+            snackbarHostState.showSnackbar("Ocupación guardada exitosamente")
             editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
+            navigator.navigateTo(ListDetailPaneScaffoldRole.List)
         }
     }
+
     LaunchedEffect(editState.deleted) {
         if (editState.deleted) {
-            snackbarHostState.showSnackbar(" Ocupación eliminada")
+            snackbarHostState.showSnackbar("🗑 Ocupación eliminada")
             editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-            showForm = false
+            navigator.navigateTo(ListDetailPaneScaffoldRole.List)
         }
     }
 
@@ -55,37 +62,106 @@ fun OcupacionMainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Registro de Ocupaciones") },
-                navigationIcon = {
-                    IconButton(onClick = onDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menú")
-                    }
-                }
+                title = { Text("Registro de Ocupaciones") }
             )
         },
         floatingActionButton = {
-            if (!showForm) {
-                FloatingActionButton(onClick = {
-                    editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-                    showForm = true
-                }) {
-                    Icon(Icons.Default.Add, contentDescription = "Nueva Ocupación")
-                }
+            FloatingActionButton(onClick = {
+                editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
+                scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Nueva Ocupación")
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(8.dp)
-        ) {
-
-            if (showForm) {
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        ListDetailPaneScaffold(
+            modifier = Modifier.padding(padding),
+            directive = navigator.scaffoldDirective,
+            value = navigator.scaffoldValue,
+            listPane = {
+                AnimatedPane {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Ocupaciones registradas (${listState.ocupaciones.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        if (listState.isLoading) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        } else if (listState.ocupaciones.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No hay ocupaciones registradas", color = Color.Gray)
+                            }
+                        } else {
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(listState.ocupaciones) { ocupacion ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        onClick = {
+                                            editViewModel.onEvent(
+                                                EditOcupacionUiEvent.Load(ocupacion.ocupacionId)
+                                            )
+                                            scope.launch {
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, ocupacion.ocupacionId)
+                                            }
+                                        }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    "#${ocupacion.ocupacionId} - ${ocupacion.descripcion}",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    "Sueldo: $${ocupacion.sueldo}",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                            IconButton(onClick = {
+                                                listViewModel.onEvent(
+                                                    ListOcupacionUiEvent.Delete(ocupacion.ocupacionId)
+                                                )
+                                            }) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Eliminar",
+                                                    tint = Color.Red
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            detailPane = {
+                AnimatedPane {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
                             .padding(16.dp)
                     ) {
                         Text(
@@ -96,161 +172,104 @@ fun OcupacionMainScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        OutlinedTextField(
-                            value = editState.descripcion,
-                            onValueChange = {
-                                editViewModel.onEvent(
-                                    EditOcupacionUiEvent.DescripcionChanged(
-                                        it
-                                    )
-                                )
-                            },
-                            label = { Text("Descripción") },
-                            isError = editState.descripcionError != null,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        editState.descripcionError?.let {
-                            Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = editState.sueldo?.toString() ?: "",
-                            onValueChange = {
-                                editViewModel.onEvent(
-                                    EditOcupacionUiEvent.SueldoChanged(
-                                        it
-                                    )
-                                )
-                            },
-                            label = { Text("Sueldo") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = editState.sueldoError != null,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        editState.sueldoError?.let {
-                            Text(it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            OutlinedButton(
-                                onClick = { editViewModel.onEvent(EditOcupacionUiEvent.Save) },
-                                enabled = !editState.isSaving
-                            ) {
-                                if (editState.isSaving) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                }
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (editState.isNew) "Guardar" else "Actualizar")
-                            }
-
-                            if (!editState.isNew) {
-                                OutlinedButton(
-                                    onClick = { editViewModel.onEvent(EditOcupacionUiEvent.Delete) },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Eliminar")
-                                }
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-                                    showForm = false
-                                }
-                            ) {
-                                Text("Cancelar")
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-            }
-
-            if (!showForm) {
-                Text(
-                    text = "Ocupaciones registradas (${listState.ocupaciones.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                if (listState.isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    }
-                } else if (listState.ocupaciones.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No hay ocupaciones registradas",
-                            color = Color.Gray,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(listState.ocupaciones) { ocupacion ->
-                            Card(
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                    .padding(16.dp)
                             ) {
+                                OutlinedTextField(
+                                    value = editState.descripcion,
+                                    onValueChange = {
+                                        editViewModel.onEvent(
+                                            EditOcupacionUiEvent.DescripcionChanged(it)
+                                        )
+                                    },
+                                    label = { Text("Descripción") },
+                                    isError = editState.descripcionError != null,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                editState.descripcionError?.let {
+                                    Text(
+                                        it,
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+
+                                OutlinedTextField(
+                                    value = editState.sueldo?.toString() ?: "",
+                                    onValueChange = {
+                                        editViewModel.onEvent(
+                                            EditOcupacionUiEvent.SueldoChanged(it)
+                                        )
+                                    },
+                                    label = { Text("Sueldo") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Decimal
+                                    ),
+                                    isError = editState.sueldoError != null,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                editState.sueldoError?.let {
+                                    Text(
+                                        it,
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+
+                                Spacer(Modifier.height(16.dp))
+
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "#${ocupacion.ocupacionId} - ${ocupacion.descripcion}",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "Sueldo: $${ocupacion.sueldo}",
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
+                                    OutlinedButton(
+                                        onClick = {
+                                            editViewModel.onEvent(EditOcupacionUiEvent.Save)
+                                        },
+                                        enabled = !editState.isSaving
+                                    ) {
+                                        if (editState.isSaving) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                        }
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(if (editState.isNew) "Guardar" else "Actualizar")
                                     }
-                                    IconButton(onClick = {
-                                        editViewModel.onEvent(EditOcupacionUiEvent.Load(ocupacion.ocupacionId))
-                                        showForm = true
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Editar",
-                                            tint = Color.Black
-                                        )
+
+                                    if (!editState.isNew) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                editViewModel.onEvent(EditOcupacionUiEvent.Delete)
+                                            },
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = Color.Red
+                                            )
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Eliminar"
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Eliminar")
+                                        }
                                     }
-                                    IconButton(onClick = {
-                                        listViewModel.onEvent(ListOcupacionUiEvent.Delete(ocupacion.ocupacionId))
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Eliminar",
-                                            tint = Color.Red
-                                        )
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
+                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List) }
+                                        }
+                                    ) {
+                                        Text("Cancelar")
                                     }
                                 }
                             }
@@ -258,6 +277,6 @@ fun OcupacionMainScreen(
                     }
                 }
             }
-        }
+        )
     }
 }
