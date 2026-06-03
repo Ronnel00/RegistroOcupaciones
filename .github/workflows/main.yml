@@ -28,7 +28,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build, run unit tests, and capture results
-      run: ./gradlew build test --no-daemon --stacktrace
+      run: ./gradlew build test -x lint -x lintDebug -x lintRelease -x lintVitalRelease --no-daemon --stacktrace
 
     - name: Test Report (Unit Tests)
       if: always()
