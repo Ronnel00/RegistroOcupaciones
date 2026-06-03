@@ -1,11 +1,16 @@
-package edu.ucne.registroocupaciones.presentation.ocupacion
+@file:OptIn(ExperimentalMaterial3AdaptiveApi::class)
+
+package edu.ucne.registroocupaciones.presentation.empleado
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -23,54 +28,83 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import edu.ucne.registroocupaciones.presentation.ocupacion.edit.EditOcupacionUiEvent
-import edu.ucne.registroocupaciones.presentation.ocupacion.edit.EditOcupacionViewModel
-import edu.ucne.registroocupaciones.presentation.ocupacion.list.ListOcupacionUiEvent
-import edu.ucne.registroocupaciones.presentation.ocupacion.list.ListOcupacionViewModel
-import androidx.compose.runtime.rememberCoroutineScope
+import edu.ucne.registroocupaciones.presentation.empleado.edit.EditEmpleadoUiEvent
+import edu.ucne.registroocupaciones.presentation.empleado.edit.EditEmpleadoViewModel
+import edu.ucne.registroocupaciones.presentation.empleado.list.ListEmpleadoUiEvent
+import edu.ucne.registroocupaciones.presentation.empleado.list.ListEmpleadoViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
-fun OcupacionMainScreen(
-    editViewModel: EditOcupacionViewModel = hiltViewModel(),
-    listViewModel: ListOcupacionViewModel = hiltViewModel()
+fun EmpleadoAdaptiveScreen(
+    onDrawer: () -> Unit = {},
+    editViewModel: EditEmpleadoViewModel = hiltViewModel(),
+    listViewModel: ListEmpleadoViewModel = hiltViewModel()
 ) {
     val editState by editViewModel.state.collectAsStateWithLifecycle()
     val listState by listViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val navigator = rememberListDetailPaneScaffoldNavigator<Int>()
     val scope = rememberCoroutineScope()
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var sexoExpanded by remember { mutableStateOf(false) }
+    val sexoOpciones = listOf("Masculino", "Femenino")
 
     LaunchedEffect(editState.saved) {
         if (editState.saved) {
-            snackbarHostState.showSnackbar("Ocupación guardada exitosamente")
-            editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
+            snackbarHostState.showSnackbar("Empleado guardado exitosamente")
+            editViewModel.onEvent(EditEmpleadoUiEvent.Load(null))
             navigator.navigateTo(ListDetailPaneScaffoldRole.List)
         }
     }
 
     LaunchedEffect(editState.deleted) {
         if (editState.deleted) {
-            snackbarHostState.showSnackbar("🗑 Ocupación eliminada")
-            editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
+            snackbarHostState.showSnackbar("Empleado eliminado")
+            editViewModel.onEvent(EditEmpleadoUiEvent.Load(null))
             navigator.navigateTo(ListDetailPaneScaffoldRole.List)
         }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = editState.fechaIngreso ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    editViewModel.onEvent(
+                        EditEmpleadoUiEvent.FechaIngresoChanged(datePickerState.selectedDateMillis)
+                    )
+                    showDatePicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
+            }
+        ) { DatePicker(state = datePickerState) }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Registro de Ocupaciones") }
+                title = { Text("Empleados (${listState.empleados.size})") }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-                scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) }
+                editViewModel.onEvent(EditEmpleadoUiEvent.Load(null))
+                scope.launch {
+                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+                }
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Ocupación")
+                Icon(Icons.Default.Add, contentDescription = "Nuevo Empleado")
             }
         }
     ) { padding ->
@@ -86,7 +120,7 @@ fun OcupacionMainScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Ocupaciones registradas (${listState.ocupaciones.size})",
+                            text = "Empleados registrados (${listState.empleados.size})",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -98,26 +132,29 @@ fun OcupacionMainScreen(
                                     modifier = Modifier.align(Alignment.Center)
                                 )
                             }
-                        } else if (listState.ocupaciones.isEmpty()) {
+                        } else if (listState.empleados.isEmpty()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("No hay ocupaciones registradas", color = Color.Gray)
+                                Text("No hay empleados registrados", color = Color.Gray)
                             }
                         } else {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                items(listState.ocupaciones) { ocupacion ->
+                                items(listState.empleados) { empleado ->
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
+                                            .padding(vertical = 6.dp),
                                         onClick = {
                                             editViewModel.onEvent(
-                                                EditOcupacionUiEvent.Load(ocupacion.ocupacionId)
+                                                EditEmpleadoUiEvent.Load(empleado.empleadoId)
                                             )
                                             scope.launch {
-                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, ocupacion.ocupacionId)
+                                                navigator.navigateTo(
+                                                    ListDetailPaneScaffoldRole.Detail,
+                                                    empleado.empleadoId
+                                                )
                                             }
                                         }
                                     ) {
@@ -129,18 +166,26 @@ fun OcupacionMainScreen(
                                         ) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    "#${ocupacion.ocupacionId} - ${ocupacion.descripcion}",
+                                                    "#${empleado.empleadoId} - ${empleado.nombres}",
                                                     style = MaterialTheme.typography.titleSmall,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                                 Text(
-                                                    "Sueldo: $${ocupacion.sueldo}",
+                                                    "Fecha: ${dateFormatter.format(Date(empleado.fechaIngreso))}",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                                Text(
+                                                    "Sexo: ${empleado.sexo}",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                                Text(
+                                                    "Sueldo: $${empleado.sueldo}",
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             }
                                             IconButton(onClick = {
                                                 listViewModel.onEvent(
-                                                    ListOcupacionUiEvent.Delete(ocupacion.ocupacionId)
+                                                    ListEmpleadoUiEvent.Delete(empleado.empleadoId)
                                                 )
                                             }) {
                                                 Icon(
@@ -163,9 +208,10 @@ fun OcupacionMainScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = if (editState.isNew) "Nueva Ocupación" else "Editar Ocupación",
+                            text = if (editState.isNew) "Nuevo Empleado" else "Editar Empleado",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -178,18 +224,19 @@ fun OcupacionMainScreen(
                                     .fillMaxWidth()
                                     .padding(16.dp)
                             ) {
+                                // Nombres
                                 OutlinedTextField(
-                                    value = editState.descripcion,
+                                    value = editState.nombres,
                                     onValueChange = {
                                         editViewModel.onEvent(
-                                            EditOcupacionUiEvent.DescripcionChanged(it)
+                                            EditEmpleadoUiEvent.NombresChanged(it)
                                         )
                                     },
-                                    label = { Text("Descripción") },
-                                    isError = editState.descripcionError != null,
+                                    label = { Text("Nombres") },
+                                    isError = editState.nombresError != null,
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                editState.descripcionError?.let {
+                                editState.nombresError?.let {
                                     Text(
                                         it,
                                         color = Color.Red,
@@ -199,11 +246,87 @@ fun OcupacionMainScreen(
 
                                 Spacer(Modifier.height(8.dp))
 
+                                // Fecha Ingreso
+                                OutlinedTextField(
+                                    value = editState.fechaIngreso?.takeIf { it != 0L }
+                                        ?.let { dateFormatter.format(Date(it)) } ?: "",
+                                    onValueChange = {},
+                                    label = { Text("Fecha de Ingreso") },
+                                    readOnly = true,
+                                    isError = editState.fechaIngresoError != null,
+                                    trailingIcon = {
+                                        IconButton(onClick = { showDatePicker = true }) {
+                                            Icon(
+                                                Icons.Default.DateRange,
+                                                contentDescription = "Fecha"
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                editState.fechaIngresoError?.let {
+                                    Text(
+                                        it,
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+
+
+                                ExposedDropdownMenuBox(
+                                    expanded = sexoExpanded,
+                                    onExpandedChange = { sexoExpanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        value = editState.sexo,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Sexo") },
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                                expanded = sexoExpanded
+                                            )
+                                        },
+                                        isError = editState.sexoError != null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .menuAnchor()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = sexoExpanded,
+                                        onDismissRequest = { sexoExpanded = false }
+                                    ) {
+                                        sexoOpciones.forEach { opcion ->
+                                            DropdownMenuItem(
+                                                text = { Text(opcion) },
+                                                onClick = {
+                                                    editViewModel.onEvent(
+                                                        EditEmpleadoUiEvent.SexoChanged(opcion)
+                                                    )
+                                                    sexoExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                editState.sexoError?.let {
+                                    Text(
+                                        it,
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+
+                                Spacer(Modifier.height(8.dp))
+
+                                // Sueldo
                                 OutlinedTextField(
                                     value = editState.sueldo?.toString() ?: "",
                                     onValueChange = {
                                         editViewModel.onEvent(
-                                            EditOcupacionUiEvent.SueldoChanged(it)
+                                            EditEmpleadoUiEvent.SueldoChanged(it)
                                         )
                                     },
                                     label = { Text("Sueldo") },
@@ -229,7 +352,7 @@ fun OcupacionMainScreen(
                                 ) {
                                     OutlinedButton(
                                         onClick = {
-                                            editViewModel.onEvent(EditOcupacionUiEvent.Save)
+                                            editViewModel.onEvent(EditEmpleadoUiEvent.Save)
                                         },
                                         enabled = !editState.isSaving
                                     ) {
@@ -248,7 +371,7 @@ fun OcupacionMainScreen(
                                     if (!editState.isNew) {
                                         OutlinedButton(
                                             onClick = {
-                                                editViewModel.onEvent(EditOcupacionUiEvent.Delete)
+                                                editViewModel.onEvent(EditEmpleadoUiEvent.Delete)
                                             },
                                             colors = ButtonDefaults.outlinedButtonColors(
                                                 contentColor = Color.Red
@@ -265,8 +388,10 @@ fun OcupacionMainScreen(
 
                                     OutlinedButton(
                                         onClick = {
-                                            editViewModel.onEvent(EditOcupacionUiEvent.Load(null))
-                                            scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.List) }
+                                            editViewModel.onEvent(EditEmpleadoUiEvent.Load(null))
+                                            scope.launch {
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.List)
+                                            }
                                         }
                                     ) {
                                         Text("Cancelar")

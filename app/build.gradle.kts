@@ -96,4 +96,14 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+    // Adaptive
+    implementation("androidx.compose.material3.adaptive:adaptive:1.1.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.1.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.1.0")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.4.0")
+
+// Window Size
+    implementation("androidx.window:window:1.3.0")
+    implementation("androidx.compose.material3:material3-window-size-class:1.3.1")
 }
